@@ -105,6 +105,7 @@ FLOWS = [
     "juicenet",
     "kodi",
     "konnected",
+    "kostal_plenticore",
     "life360",
     "lifx",
     "local_ip",
