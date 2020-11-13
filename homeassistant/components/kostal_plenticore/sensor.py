@@ -1,23 +1,25 @@
 """Platform for Kostal Plenticore sensors."""
 import logging
 
+import voluptuous as vol
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.const import (
+    ATTR_DEVICE_CLASS,
+    ATTR_ICON,
+    ATTR_UNIT_OF_MEASUREMENT,
     CONF_HOST,
     CONF_NAME,
-    STATE_UNAVAILABLE,
-    ENERGY_KILO_WATT_HOUR,
-    POWER_WATT,
-    PERCENTAGE,
-    DEVICE_CLASS_ENERGY,
     DEVICE_CLASS_BATTERY,
+    DEVICE_CLASS_ENERGY,
     DEVICE_CLASS_POWER,
-    ATTR_DEVICE_CLASS,
-    ATTR_UNIT_OF_MEASUREMENT,
-    ATTR_ICON,
+    ENERGY_KILO_WATT_HOUR,
+    PERCENTAGE,
+    POWER_WATT,
+    STATE_UNAVAILABLE,
 )
 from homeassistant.helpers import config_validation as cv, entity_platform, service
 from homeassistant.helpers.entity import Entity
@@ -25,7 +27,14 @@ from homeassistant.util import Throttle
 
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, SCOPE_PROCESS_DATA, SCOPE_SETTING
+from .const import (
+    DOMAIN,
+    SCOPE_PROCESS_DATA,
+    SCOPE_SETTING,
+    SENSOR_PROCESS_DATA,
+    SERVICE_SET_VALUE,
+    SENSOR_SETTINGS_DATA,
+)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -110,508 +119,52 @@ def format_em_manager_state(state):
     return "Unknown"
 
 
-# module-id, process-data-id, name, sensor-properties
-BASIC_DATA = [
-    (
-        "devices:local",
-        "Inverter:State",
-        "Inverter State",
-        {},
-        format_inverter_state,
-    ),
-    (
-        "devices:local",
-        "Grid_P",
-        "Grid Power",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
-        format_round,
-    ),
-    (
-        "devices:local",
-        "HomeBat_P",
-        "Home Power from Battery",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
-        format_round,
-    ),
-    (
-        "devices:local",
-        "HomeGrid_P",
-        "Home Power from Grid",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
-        format_round,
-    ),
-    (
-        "devices:local",
-        "HomeOwn_P",
-        "Home Power",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
-        format_round,
-    ),
-    (
-        "devices:local",
-        "HomePv_P",
-        "Home Power from PV",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
-        format_round,
-    ),
-    (
-        "devices:local:ac",
-        "P",
-        "AC Power",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
-        format_round,
-    ),
-    (
-        "devices:local:pv1",
-        "P",
-        "DC1 Power",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
-        format_round,
-    ),
-    (
-        "devices:local:pv2",
-        "P",
-        "DC2 Power",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
-        format_round,
-    ),
-]
-
-BATTERY_DATA = [
-    (
-        "devices:local",
-        "PV2Bat_P",
-        "PV to Battery Power",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
-        format_round,
-    ),
-    (
-        "devices:local",
-        "EM_State",
-        "Energy Manager State",
-        {},
-        format_em_manager_state,
-    ),
-    ("devices:local:battery", "Cycles", "Battery Cycles", {}, format_round),
-    (
-        "devices:local:battery",
-        "P",
-        "Battery Power",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
-        format_round,
-    ),
-    (
-        "devices:local:battery",
-        "SoC",
-        "Battery SoC",
-        {ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE, ATTR_DEVICE_CLASS: DEVICE_CLASS_BATTERY},
-        format_round,
-    ),
-]
-
-STATISTIC_DATA = [
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:Autarky:Day",
-        "Autarky Day",
-        {ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE},
-        format_round,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:Autarky:Month",
-        "Autarky Month",
-        {ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE},
-        format_round,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:Autarky:Total",
-        "Autarky Total",
-        {ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE},
-        format_round,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:Autarky:Year",
-        "Autarky Year",
-        {ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE},
-        format_round,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:OwnConsumptionRate:Day",
-        "Own Consumption Rate Day",
-        {ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE},
-        format_round,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:OwnConsumptionRate:Month",
-        "Own Consumption Rate Month",
-        {ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE},
-        format_round,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:OwnConsumptionRate:Total",
-        "Own Consumption Rate Total",
-        {ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE},
-        format_round,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:OwnConsumptionRate:Year",
-        "Own Consumption Rate Year",
-        {ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE},
-        format_round,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHome:Day",
-        "Home Consumption Day",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHome:Month",
-        "Home Consumption Month",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHome:Year",
-        "Home Consumption Year",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHome:Total",
-        "Home Consumption Total",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomeBat:Day",
-        "Home Consumption from Battery Day",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomeBat:Month",
-        "Home Consumption from Battery Month",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomeBat:Year",
-        "Home Consumption from Battery Year",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomeBat:Total",
-        "Home Consumption from Battery Total",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomeGrid:Day",
-        "Home Consumption from Grid Day",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomeGrid:Month",
-        "Home Consumption from Grid Month",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomeGrid:Year",
-        "Home Consumption from Grid Year",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomeGrid:Total",
-        "Home Consumption from Grid Total",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomePv:Day",
-        "Home Consumption from PV Day",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomePv:Month",
-        "Home Consumption from PV Month",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomePv:Year",
-        "Home Consumption from PV Year",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyHomePv:Total",
-        "Home Consumption from PV Total",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyPv1:Day",
-        "Energy PV1 Day",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyPv1:Month",
-        "Energy PV1 Month",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyPv1:Year",
-        "Energy PV1 Year",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyPv1:Total",
-        "Energy PV1 Total",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyPv2:Day",
-        "Energy PV2 Day",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyPv2:Month",
-        "Energy PV2 Month",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyPv2:Year",
-        "Energy PV2 Year",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:EnergyPv2:Total",
-        "Energy PV2 Total",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:Yield:Day",
-        "Energy Yield Day",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:Yield:Month",
-        "Energy Yield Month",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:Yield:Year",
-        "Energy Yield Year",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-    (
-        "scb:statistic:EnergyFlow",
-        "Statistic:Yield:Total",
-        "Energy Yield Total",
-        {
-            ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
-            ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
-        },
-        format_energy,
-    ),
-]
-
-
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    all_data = []
-    all_data.extend(BASIC_DATA)
-    all_data.extend(BATTERY_DATA)
-    all_data.extend(STATISTIC_DATA)
+    process_data_entities = []
+    for mid, did, sn, sd, fm in SENSOR_PROCESS_DATA:
+        # get function for string
+        fm = globals()[str(fm)]
 
-    async_add_entities(
-        [
+        process_data_entities.append(
             PlenticoreProcessDataSensor(
-                coordinator, entry.entry_id, entry.title, mid, pid, sn, sd, fm
+                coordinator, entry.entry_id, entry.title, mid, did, sn, sd, fm
             )
-            for mid, pid, sn, sd, fm in all_data
-        ]
-    )
+        )
 
-    async_add_entities(
-        [
+    async_add_entities(process_data_entities)
+
+    setting_entities = []
+    for mid, did, sn, sd, fm in SENSOR_SETTINGS_DATA:
+        # get function for string
+        fm = globals()[str(fm)]
+
+        setting_entities.append(
             PlenticoreSettingSensor(
-                coordinator,
-                entry.entry_id,
-                entry.title,
-                "devices:local",
-                "Battery:MinSoc",
-                "MinSoc",
-                {},
-                format_round,
+                coordinator, entry.entry_id, entry.title, mid, did, sn, sd, fm
             )
-        ]
-    )
+        )
+
+    async_add_entities(setting_entities)
 
     await coordinator.async_refresh()
 
     platform = entity_platform.current_platform.get()
-    print(platform)
 
-    @service.verify_domain_control(hass, DOMAIN)
-    async def async_service_handle(service_call: ServiceCall):
-        print(service_call)
-        entities = await platform.async_extract_from_service(service_call)
-        print(entities)
-
-    # platform.async_register_entity_service(
-    #     "foo",
-    #     {},
-    #     async_service_handle,
-    # )
-
-    hass.services.async_register(
-        DOMAIN,
-        "bar",
-        async_service_handle,
-        cv.make_entity_service_schema({}),
+    platform.async_register_entity_service(
+        SERVICE_SET_VALUE,
+        {vol.Required("value"): str},
+        "set_new_value",
     )
 
     return True
 
 
 class PlenticoreProcessDataSensor(CoordinatorEntity):
-    """Representation of a Plenticore Sensor."""
+    """Representation of a Plenticore process data Sensor."""
 
     def __init__(
         self,
@@ -619,7 +172,7 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
         entry_id,
         platform_name: str,
         module_id: str,
-        process_data_id: str,
+        data_id: str,
         sensor_name: str,
         sensor_data: dict,
         formatter: callable,
@@ -628,7 +181,7 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
         self.entry_id = entry_id
         self.platform_name = platform_name
         self.module_id = module_id
-        self.process_data_id = process_data_id
+        self.data_id = data_id
 
         self._sensor_name = sensor_name
         self._sensor_data = sensor_data
@@ -663,18 +216,15 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        module = (
-            self.coordinator.data[SCOPE_PROCESS_DATA].get(self.module_id)
-            if self.coordinator.data is not None
-            else None
-        )
-        processdata = module.get(self.process_data_id) if module is not None else None
-        state = processdata.value if processdata is not None else STATE_UNAVAILABLE
+        if self.coordinator.data is None:
+            return STATE_UNAVAILABLE
 
-        if state is not None and state is not STATE_UNAVAILABLE and self._formatter:
-            state = self._formatter(state)
+        try:
+            raw_value = self.coordinator.data[self.scope][self.module_id][self.data_id]
+        except KeyError:
+            return STATE_UNAVAILABLE
 
-        return state
+        return self._formatter(raw_value) if self._formatter else raw_value
 
     @property
     def device_info(self):
@@ -683,7 +233,7 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
 
 
 class PlenticoreSettingSensor(PlenticoreProcessDataSensor):
-    """Representation of a Plenticore Sensor."""
+    """Representation of a Plenticore setting value Sensor."""
 
     def __init__(
         self,
@@ -691,7 +241,7 @@ class PlenticoreSettingSensor(PlenticoreProcessDataSensor):
         entry_id,
         platform_name: str,
         module_id: str,
-        process_data_id: str,
+        data_id: str,
         sensor_name: str,
         sensor_data: dict,
         formatter: callable,
@@ -701,7 +251,7 @@ class PlenticoreSettingSensor(PlenticoreProcessDataSensor):
             entry_id,
             platform_name,
             module_id,
-            process_data_id,
+            data_id,
             sensor_name,
             sensor_data,
             formatter,
@@ -711,18 +261,5 @@ class PlenticoreSettingSensor(PlenticoreProcessDataSensor):
     def scope(self):
         return SCOPE_SETTING
 
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        module = (
-            self.coordinator.data[SCOPE_SETTING].get(self.module_id)
-            if self.coordinator.data is not None
-            else None
-        )
-        processdata = module.get(self.process_data_id) if module is not None else None
-        state = processdata if processdata is not None else STATE_UNAVAILABLE
-
-        if state is not None and state is not STATE_UNAVAILABLE and self._formatter:
-            state = self._formatter(state)
-
-        return state
+    async def set_new_value(self, value):
+        await self.coordinator.write_setting(self.module_id, self.data_id, value)
