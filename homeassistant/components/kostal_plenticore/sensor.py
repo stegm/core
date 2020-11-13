@@ -2,7 +2,7 @@
 import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.const import (
@@ -19,13 +19,13 @@ from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
     ATTR_ICON,
 )
-import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers import config_validation as cv, entity_platform, service
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, SCOPE_PROCESS_DATA, SCOPE_SETTING
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -561,19 +561,56 @@ async def async_setup_entry(
 
     async_add_entities(
         [
-            PlenticoreSensor(
+            PlenticoreProcessDataSensor(
                 coordinator, entry.entry_id, entry.title, mid, pid, sn, sd, fm
             )
             for mid, pid, sn, sd, fm in all_data
         ]
     )
 
+    async_add_entities(
+        [
+            PlenticoreSettingSensor(
+                coordinator,
+                entry.entry_id,
+                entry.title,
+                "devices:local",
+                "Battery:MinSoc",
+                "MinSoc",
+                {},
+                format_round,
+            )
+        ]
+    )
+
     await coordinator.async_refresh()
+
+    platform = entity_platform.current_platform.get()
+    print(platform)
+
+    @service.verify_domain_control(hass, DOMAIN)
+    async def async_service_handle(service_call: ServiceCall):
+        print(service_call)
+        entities = await platform.async_extract_from_service(service_call)
+        print(entities)
+
+    # platform.async_register_entity_service(
+    #     "foo",
+    #     {},
+    #     async_service_handle,
+    # )
+
+    hass.services.async_register(
+        DOMAIN,
+        "bar",
+        async_service_handle,
+        cv.make_entity_service_schema({}),
+    )
 
     return True
 
 
-class PlenticoreSensor(CoordinatorEntity):
+class PlenticoreProcessDataSensor(CoordinatorEntity):
     """Representation of a Plenticore Sensor."""
 
     def __init__(
@@ -600,6 +637,10 @@ class PlenticoreSensor(CoordinatorEntity):
         self.coordinator.register_entity(self)
 
     @property
+    def scope(self):
+        return SCOPE_PROCESS_DATA
+
+    @property
     def unique_id(self):
         return f"{self.entry_id}_{self._sensor_name}"
 
@@ -623,7 +664,7 @@ class PlenticoreSensor(CoordinatorEntity):
     def state(self):
         """Return the state of the sensor."""
         module = (
-            self.coordinator.data.get(self.module_id)
+            self.coordinator.data[SCOPE_PROCESS_DATA].get(self.module_id)
             if self.coordinator.data is not None
             else None
         )
@@ -639,3 +680,49 @@ class PlenticoreSensor(CoordinatorEntity):
     def device_info(self):
         """Device info."""
         return self.coordinator.device_info
+
+
+class PlenticoreSettingSensor(PlenticoreProcessDataSensor):
+    """Representation of a Plenticore Sensor."""
+
+    def __init__(
+        self,
+        coordinator,
+        entry_id,
+        platform_name: str,
+        module_id: str,
+        process_data_id: str,
+        sensor_name: str,
+        sensor_data: dict,
+        formatter: callable,
+    ):
+        super().__init__(
+            coordinator,
+            entry_id,
+            platform_name,
+            module_id,
+            process_data_id,
+            sensor_name,
+            sensor_data,
+            formatter,
+        )
+
+    @property
+    def scope(self):
+        return SCOPE_SETTING
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        module = (
+            self.coordinator.data[SCOPE_SETTING].get(self.module_id)
+            if self.coordinator.data is not None
+            else None
+        )
+        processdata = module.get(self.process_data_id) if module is not None else None
+        state = processdata if processdata is not None else STATE_UNAVAILABLE
+
+        if state is not None and state is not STATE_UNAVAILABLE and self._formatter:
+            state = self._formatter(state)
+
+        return state
