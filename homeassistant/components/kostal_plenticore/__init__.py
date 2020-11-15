@@ -18,6 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_NAME
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.device_registry import async_get_registry
 
 from .const import DOMAIN, SCOPE_PROCESS_DATA, SCOPE_SETTING
 
@@ -49,6 +50,7 @@ class PlenticoreApi(DataUpdateCoordinator):
         )
 
         self._device_info = {
+            "identifiers": {(DOMAIN, config[CONF_HOST])},
             "name": config[CONF_NAME],
             "manufacturer": "Kostal",
         }
@@ -101,18 +103,28 @@ class PlenticoreApi(DataUpdateCoordinator):
 
         devices_local = device_settings["devices:local"]
 
-        self._device_info["model"] = (
+        model = (
             devices_local["Branding:ProductName1"]
             + " "
             + devices_local["Branding:ProductName2"]
         )
-        self._device_info["identifiers"] = {
-            (DOMAIN, devices_local["Properties:SerialNo"])
-        }
-        self._device_info["sw_version"] = (
+
+        sw_version = (
             f'IOC: {devices_local["Properties:VersionIOC"]}',
             f'MC: {devices_local["Properties:VersionMC"]}',
         )
+
+        dev_registry = await async_get_registry(self.hass)
+        device = dev_registry.async_get_device(
+            identifiers={(DOMAIN, self._config[CONF_HOST])}, connections=set()
+        )
+        if device is not None:
+            _LOGGER.info(
+                "Update device_info model=%s, sw_version=%s.", model, sw_version
+            )
+            dev_registry.async_update_device(
+                device.id, model=model, sw_version=sw_version
+            )
 
     async def _udpate_existing_data(self):
         data = await self._client.get_settings()
@@ -151,8 +163,8 @@ class PlenticoreApi(DataUpdateCoordinator):
         """Ensures that the default user is logged in."""
         if not self._login:
             await self._client.login(self._config[CONF_PASSWORD])
-            await self._update_device_info()
             await self._udpate_existing_data()
+            await self._update_device_info()
             _LOGGER.info("Log-in successfully at %s.", self._config[CONF_HOST])
             self._login = True
 
