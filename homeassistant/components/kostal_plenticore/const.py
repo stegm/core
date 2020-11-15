@@ -13,12 +13,24 @@ from homeassistant.const import (
 
 DOMAIN = "kostal_plenticore"
 
+"""Scope of fetched data."""
 SCOPE_PROCESS_DATA = "process data"
 SCOPE_SETTING = "setting"
 
+"""Service name for writing setting values."""
 SERVICE_SET_VALUE = "write_setting_value"
 
-# module-id, data-id, name, sensor-properties, formatter (function name)
+ATTR_VALUE = "value"
+
+"""Defines all entities for process data.
+
+Each entry is defined with a tuple of these values:
+ - module id (str)
+ - process data id (str)
+ - entity name suffix (str)
+ - sensor properties (dict)
+ - value formatter (str)
+"""
 SENSOR_PROCESS_DATA = [
     (
         "devices:local",
@@ -450,6 +462,15 @@ SENSOR_PROCESS_DATA = [
     ),
 ]
 
+"""Defines all entities for settings.
+
+Each entry is defined with a tuple of these values:
+ - module id (str)
+ - process data id (str)
+ - entity name suffix (str)
+ - sensor properties (dict)
+ - value formatter (str)
+"""
 SENSOR_SETTINGS_DATA = [
     (
         "devices:local",
@@ -462,7 +483,7 @@ SENSOR_SETTINGS_DATA = [
         "devices:local",
         "Battery:MinHomeComsumption",
         "BatteryMinHomeComsumption",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT},
+        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
         "format_round",
     ),
     (

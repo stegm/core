@@ -6,3 +6,4 @@ write_setting_value:
       example: sensor.plenticore_minsoc
     value:
       description: the value to write
+      example: "10"

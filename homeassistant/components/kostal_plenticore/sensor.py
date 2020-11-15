@@ -9,6 +9,7 @@ from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.const import (
     ATTR_DEVICE_CLASS,
+    ATTR_ENTITY_ID,
     ATTR_ICON,
     ATTR_UNIT_OF_MEASUREMENT,
     CONF_HOST,
@@ -28,6 +29,7 @@ from homeassistant.util import Throttle
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    ATTR_VALUE,
     DOMAIN,
     SCOPE_PROCESS_DATA,
     SCOPE_SETTING,
@@ -38,6 +40,13 @@ from .const import (
 
 
 _LOGGER = logging.getLogger(__name__)
+
+SERVICE_SET_VALUE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+        vol.Required(ATTR_VALUE): vol.Coerce(str),
+    }
+)
 
 
 def format_round(state):
@@ -124,39 +133,37 @@ async def async_setup_entry(
 ):
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    process_data_entities = []
+    entities = []
+
     for mid, did, sn, sd, fm in SENSOR_PROCESS_DATA:
         # get function for string
         fm = globals()[str(fm)]
 
-        process_data_entities.append(
+        entities.append(
             PlenticoreProcessDataSensor(
                 coordinator, entry.entry_id, entry.title, mid, did, sn, sd, fm
             )
         )
 
-    async_add_entities(process_data_entities)
-
-    setting_entities = []
     for mid, did, sn, sd, fm in SENSOR_SETTINGS_DATA:
         # get function for string
         fm = globals()[str(fm)]
 
-        setting_entities.append(
+        entities.append(
             PlenticoreSettingSensor(
                 coordinator, entry.entry_id, entry.title, mid, did, sn, sd, fm
             )
         )
 
-    async_add_entities(setting_entities)
+    async_add_entities(entities)
 
-    await coordinator.async_refresh()
+    # await coordinator.async_refresh()
 
     platform = entity_platform.current_platform.get()
 
     platform.async_register_entity_service(
         SERVICE_SET_VALUE,
-        {vol.Required("value"): str},
+        SERVICE_SET_VALUE_SCHEMA,
         "set_new_value",
     )
 
@@ -187,7 +194,23 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
         self._sensor_data = sensor_data
         self._formatter = formatter
 
+        self._available = True
+
+    async def async_added_to_hass(self):
         self.coordinator.register_entity(self)
+        await super().async_added_to_hass()
+
+    async def async_will_remove_from_hass(self):
+        await super().async_will_remove_from_hass()
+        self.coordinator.unregister_entity(self)
+
+    @property
+    def available(self):
+        return self._available
+
+    @available.setter
+    def available(self, available):
+        self._available = available
 
     @property
     def scope(self):
@@ -217,7 +240,8 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
     def state(self):
         """Return the state of the sensor."""
         if self.coordinator.data is None:
-            return STATE_UNAVAILABLE
+            # None is translated to STATE_UNKNOWN
+            return None
 
         try:
             raw_value = self.coordinator.data[self.scope][self.module_id][self.data_id]
@@ -262,4 +286,4 @@ class PlenticoreSettingSensor(PlenticoreProcessDataSensor):
         return SCOPE_SETTING
 
     async def set_new_value(self, value):
-        await self.coordinator.write_setting(self.module_id, self.data_id, value)
+        await self.coordinator.write_setting(self.module_id, self.data_id, str(value))

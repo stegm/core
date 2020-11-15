@@ -1,6 +1,5 @@
 """Test the Kostal Plenticore Solar Inverter config flow."""
 from homeassistant import config_entries, setup
-from homeassistant.components.kostal_plenticore.config_flow import CannotConnect, InvalidAuth
 from homeassistant.components.kostal_plenticore.const import DOMAIN
 
 from tests.async_mock import patch
