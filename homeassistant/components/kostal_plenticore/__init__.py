@@ -110,8 +110,8 @@ class PlenticoreApi(DataUpdateCoordinator):
         )
 
         sw_version = (
-            f'IOC: {devices_local["Properties:VersionIOC"]}',
-            f'MC: {devices_local["Properties:VersionMC"]}',
+            f'IOC: {devices_local["Properties:VersionIOC"]}'
+            + f' MC: {devices_local["Properties:VersionMC"]}'
         )
 
         dev_registry = await async_get_registry(self.hass)
