@@ -72,6 +72,7 @@ class PlenticoreApi(DataUpdateCoordinator):
         if self._login:
             self._login = False
             await self._client.logout()
+            _LOGGER.info("Logged out from %s.", self._config[CONF_HOST])
 
     def register_entity(self, entity):
         """Registers a entity on this instance."""
@@ -176,6 +177,7 @@ class PlenticoreApi(DataUpdateCoordinator):
         await self._ensure_login()
 
         if self._update_request:
+            _LOGGER.debug("Building new requests.")
             self._process_request = self._build_request(SCOPE_PROCESS_DATA)
             self._setting_request = self._build_request(SCOPE_SETTING)
             self._update_request = False
