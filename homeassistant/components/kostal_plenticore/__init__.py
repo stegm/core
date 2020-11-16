@@ -14,8 +14,13 @@ from kostal.plenticore import (
 
 from homeassistant.util.dt import utcnow
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_NAME
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import (
+    CONF_HOST,
+    CONF_PASSWORD,
+    CONF_NAME,
+    EVENT_HOMEASSISTANT_STOP,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.device_registry import async_get_registry
@@ -225,6 +230,12 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Kostal Plenticore Solar Inverter from a config entry."""
     api = PlenticoreApi(hass, entry.data, _LOGGER)
+
+    @callback
+    def shutdown(event):
+        hass.async_create_task(api.logout())
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown)
 
     hass.data[DOMAIN][entry.entry_id] = api
 
