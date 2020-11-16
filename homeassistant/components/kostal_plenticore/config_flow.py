@@ -67,7 +67,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if user_input[CONF_HOST] not in configured_instances(self.hass):
                 try:
-                    hostname, serial = await test_connection(self.hass, user_input)
+                    await test_connection(self.hass, user_input)
 
                     return self.async_create_entry(
                         title=user_input[CONF_NAME], data=user_input
