@@ -2,12 +2,11 @@
 import logging
 
 import voluptuous as vol
-from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientError
-from asyncio.exceptions import TimeoutError
+from asyncio.exceptions import TimeoutError as AsyncIOTimeoutError
 from kostal.plenticore import PlenticoreApiClient, PlenticoreAuthenticationException
 
-from homeassistant import config_entries, core, exceptions
+from homeassistant import config_entries, core
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -72,12 +71,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return self.async_create_entry(
                         title=user_input[CONF_NAME], data=user_input
                     )
-                except PlenticoreAuthenticationException as e:
+                except PlenticoreAuthenticationException as ex:
                     self._errors[CONF_NAME] = "invalid_auth"
-                    _LOGGER.exception("Error response: %s", e.Message)
+                    _LOGGER.exception("Error response: %s", ex.msg)
                 except ClientError:
                     self._errors[CONF_NAME] = "cannot_connect"
-                except TimeoutError:
+                except AsyncIOTimeoutError:
                     self._errors[CONF_NAME] = "cannot_connect"
                 except Exception:  # pylint: disable=broad-except
                     _LOGGER.exception("Unexpected exception")

@@ -74,6 +74,7 @@ class PlenticoreApi(DataUpdateCoordinator):
         self._setting_request = {}
 
     async def logout(self):
+        """Logs the out."""
         if self._login:
             self._login = False
             await self._client.logout()
@@ -93,6 +94,7 @@ class PlenticoreApi(DataUpdateCoordinator):
 
     @property
     def device_info(self):
+        """Returns the device info for all plenticore entities."""
         return self._device_info
 
     async def _update_device_info(self):

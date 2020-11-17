@@ -4,27 +4,15 @@ import logging
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.config_entries import SOURCE_IMPORT
+from homeassistant.core import HomeAssistant
 from homeassistant.const import (
     ATTR_DEVICE_CLASS,
     ATTR_ENTITY_ID,
     ATTR_ICON,
     ATTR_UNIT_OF_MEASUREMENT,
-    CONF_HOST,
-    CONF_NAME,
-    DEVICE_CLASS_BATTERY,
-    DEVICE_CLASS_ENERGY,
-    DEVICE_CLASS_POWER,
-    ENERGY_KILO_WATT_HOUR,
-    PERCENTAGE,
-    POWER_WATT,
     STATE_UNAVAILABLE,
 )
-from homeassistant.helpers import config_validation as cv, entity_platform, service
-from homeassistant.helpers.entity import Entity
-from homeassistant.util import Throttle
+from homeassistant.helpers import config_validation as cv, entity_platform
 
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -50,6 +38,7 @@ SERVICE_SET_VALUE_SCHEMA = vol.Schema(
 
 
 def format_round(state):
+    """Returns the given state value as rounded integer."""
     try:
         return round(float(state))
     except (TypeError, ValueError):
@@ -57,6 +46,7 @@ def format_round(state):
 
 
 def format_energy(state):
+    """Returns the given state value as energy value, scaled to kWh."""
     try:
         return round(float(state) / 1000, 1)
     except (TypeError, ValueError):
@@ -64,6 +54,7 @@ def format_energy(state):
 
 
 def format_inverter_state(state):
+    """Returns a readable string of the inverter state."""
     try:
         value = int(state)
     except (TypeError, ValueError):
@@ -107,6 +98,7 @@ def format_inverter_state(state):
 
 
 def format_em_manager_state(state):
+    """Returns a readable state of the energy manager."""
     try:
         value = int(state)
     except (TypeError, ValueError):
@@ -135,23 +127,23 @@ async def async_setup_entry(
 
     entities = []
 
-    for mid, did, sn, sd, fm in SENSOR_PROCESS_DATA:
+    for mid, did, ssn, ssd, fmt in SENSOR_PROCESS_DATA:
         # get function for string
         fm = globals()[str(fm)]
 
         entities.append(
             PlenticoreProcessDataSensor(
-                coordinator, entry.entry_id, entry.title, mid, did, sn, sd, fm
+                coordinator, entry.entry_id, entry.title, mid, did, ssn, ssd, fmt
             )
         )
 
-    for mid, did, sn, sd, fm in SENSOR_SETTINGS_DATA:
+    for mid, did, ssn, ssd, fmt in SENSOR_SETTINGS_DATA:
         # get function for string
         fm = globals()[str(fm)]
 
         entities.append(
             PlenticoreSettingSensor(
-                coordinator, entry.entry_id, entry.title, mid, did, sn, sd, fm
+                coordinator, entry.entry_id, entry.title, mid, did, ssn, ssd, fmt
             )
         )
 
@@ -210,6 +202,7 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
 
     @available.setter
     def available(self, available):
+        """Sets the available state."""
         self._available = available
 
     @property
@@ -259,31 +252,10 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
 class PlenticoreSettingSensor(PlenticoreProcessDataSensor):
     """Representation of a Plenticore setting value Sensor."""
 
-    def __init__(
-        self,
-        coordinator,
-        entry_id,
-        platform_name: str,
-        module_id: str,
-        data_id: str,
-        sensor_name: str,
-        sensor_data: dict,
-        formatter: callable,
-    ):
-        super().__init__(
-            coordinator,
-            entry_id,
-            platform_name,
-            module_id,
-            data_id,
-            sensor_name,
-            sensor_data,
-            formatter,
-        )
-
     @property
     def scope(self):
         return SCOPE_SETTING
 
     async def set_new_value(self, value):
+        """Writes the given value to the setting of this entity instance."""
         await self.coordinator.write_setting(self.module_id, self.data_id, str(value))
