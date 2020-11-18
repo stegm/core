@@ -65,7 +65,7 @@ async def test_form_invalid_auth(hass):
         )
 
     assert result2["type"] == "form"
-    assert result2["errors"] == {"name": "invalid_auth"}
+    assert result2["errors"] == {"password": "invalid_auth"}
 
 
 async def test_form_cannot_connect(hass):
@@ -87,4 +87,4 @@ async def test_form_cannot_connect(hass):
         )
 
     assert result2["type"] == "form"
-    assert result2["errors"] == {"name": "cannot_connect"}
+    assert result2["errors"] == {"host": "cannot_connect"}

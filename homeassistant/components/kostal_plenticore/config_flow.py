@@ -7,7 +7,7 @@ from asyncio.exceptions import TimeoutError as AsyncIOTimeoutError
 from kostal.plenticore import PlenticoreApiClient, PlenticoreAuthenticationException
 
 from homeassistant import config_entries, core
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_BASE
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -73,17 +73,17 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         title=user_input[CONF_NAME], data=user_input
                     )
                 except PlenticoreAuthenticationException as ex:
-                    self._errors[CONF_NAME] = "invalid_auth"
+                    self._errors[CONF_PASSWORD] = "invalid_auth"
                     _LOGGER.exception("Error response: %s", ex.msg)
                 except ClientError:
-                    self._errors[CONF_NAME] = "cannot_connect"
+                    self._errors[CONF_HOST] = "cannot_connect"
                 except AsyncIOTimeoutError:
-                    self._errors[CONF_NAME] = "cannot_connect"
+                    self._errors[CONF_HOST] = "cannot_connect"
                 except Exception:  # pylint: disable=broad-except
                     _LOGGER.exception("Unexpected exception")
-                    self._errors[CONF_NAME] = "unknown"
+                    self._errors[CONF_BASE] = "unknown"
             else:
-                self._errors[CONF_NAME] = "already_configured"
+                self._errors[CONF_BASE] = "already_configured"
 
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=self._errors
