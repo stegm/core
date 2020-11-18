@@ -49,6 +49,8 @@ class PlenticoreApi(DataUpdateCoordinator):
         self._config = config
         self._login = False
         self._registered_entities = []
+        self._available_entities = []
+        self._entities_updated = False
 
         self._client = PlenticoreApiClient(
             async_get_clientsession(hass), host=config[CONF_HOST]
@@ -69,10 +71,6 @@ class PlenticoreApi(DataUpdateCoordinator):
         # last update timestamp of setting values
         self._last_setting_update = None
 
-        self._update_request = False
-        self._process_request = {}
-        self._setting_request = {}
-
     async def logout(self):
         """Logs the out."""
         if self._login:
@@ -83,14 +81,14 @@ class PlenticoreApi(DataUpdateCoordinator):
     def register_entity(self, entity):
         """Registers a entity on this instance."""
         self._registered_entities.append(entity)
-        self._update_request = True
+        self._entities_updated = True
 
     def unregister_entity(self, entity):
         """Registers a entity on this instance."""
         self._registered_entities = [
             x for x in self._registered_entities if x.unique_id != entity.unique_id
         ]
-        self._update_request = True
+        self._entities_updated = True
 
     @property
     def device_info(self):
@@ -145,27 +143,31 @@ class PlenticoreApi(DataUpdateCoordinator):
             m: set(v) for m, v in data.items()
         }
 
-        self._update_request = True
+        self._entities_updated = True
 
     def _build_request(self, scope: str):
-        existing = self._existing_data_ids[scope]
         request = defaultdict(list)
 
-        for entity in self._registered_entities:
+        for entity in self._available_entities:
             if entity.scope == scope and entity.enabled:
-                if (
-                    entity.module_id in existing
-                    and entity.data_id in existing[entity.module_id]
-                ):
-                    request[entity.module_id].append(entity.data_id)
-                    entity.available = True
-                else:
-                    entity.available = False
-                    _LOGGER.info(
-                        "Entity '%s' is not available on plenticore.", entity.name
-                    )
+                request[entity.module_id].append(entity.data_id)
 
         return request
+
+    def _build_available_entities(self):
+        self._available_entities = []
+        for entity in self._registered_entities:
+            if (
+                entity.scope in self._existing_data_ids
+                and entity.module_id in self._existing_data_ids[entity.scope]
+                and entity.data_id
+                in self._existing_data_ids[entity.scope][entity.module_id]
+            ):
+                self._available_entities.append(entity)
+                entity.available = True
+            else:
+                entity.available = False
+                _LOGGER.info("Entity '%s' is not available on plenticore.", entity.name)
 
     async def _ensure_login(self):
         """Ensures that the default user is logged in."""
@@ -183,15 +185,15 @@ class PlenticoreApi(DataUpdateCoordinator):
 
         await self._ensure_login()
 
-        if self._update_request:
-            _LOGGER.debug("Building new requests.")
-            self._process_request = self._build_request(SCOPE_PROCESS_DATA)
-            self._setting_request = self._build_request(SCOPE_SETTING)
-            self._update_request = False
+        if self._entities_updated:
+            _LOGGER.debug("Building available entity list.")
+            self._build_available_entities()
+            self._entities_updated = False
 
-        if len(self._process_request) > 0:
-            _LOGGER.debug("Fetching process data for: %s", self._process_request)
-            data = await self._client.get_process_data_values(self._process_request)
+        _process_request = self._build_request(SCOPE_PROCESS_DATA)
+        if len(_process_request) > 0:
+            _LOGGER.debug("Fetching process data for: %s", _process_request)
+            data = await self._client.get_process_data_values(_process_request)
             process_data = {m: {pd.id: pd.value for pd in data[m]} for m in data}
             self._data[SCOPE_PROCESS_DATA].update(process_data)
 
@@ -201,11 +203,10 @@ class PlenticoreApi(DataUpdateCoordinator):
         ) >= timedelta(seconds=300):
             self._last_setting_update = utcnow()
 
-            if len(self._setting_request) > 0:
-                _LOGGER.debug("Fetching setting data for: %s", self._setting_request)
-                setting_data = await self._client.get_setting_values(
-                    self._setting_request
-                )
+            _setting_request = self._build_request(SCOPE_SETTING)
+            if len(_setting_request) > 0:
+                _LOGGER.debug("Fetching setting data for: %s", _setting_request)
+                setting_data = await self._client.get_setting_values(_setting_request)
                 self._data[SCOPE_SETTING].update(setting_data)
 
         return self._data
