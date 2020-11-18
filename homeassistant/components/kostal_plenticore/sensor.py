@@ -4,7 +4,6 @@ import logging
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.const import (
     ATTR_DEVICE_CLASS,
     ATTR_ENTITY_ID,
@@ -12,8 +11,8 @@ from homeassistant.const import (
     ATTR_UNIT_OF_MEASUREMENT,
     STATE_UNAVAILABLE,
 )
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, entity_platform
-
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -22,10 +21,9 @@ from .const import (
     SCOPE_PROCESS_DATA,
     SCOPE_SETTING,
     SENSOR_PROCESS_DATA,
-    SERVICE_SET_VALUE,
     SENSOR_SETTINGS_DATA,
+    SERVICE_SET_VALUE,
 )
-
 
 _LOGGER = logging.getLogger(__name__)
 

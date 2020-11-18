@@ -1,29 +1,24 @@
 """The Kostal Plenticore Solar Inverter integration."""
 import asyncio
-from datetime import timedelta
 from collections import defaultdict
-
+from datetime import timedelta
 import logging
 
+from kostal.plenticore import PlenticoreApiClient, PlenticoreApiException
 import voluptuous as vol
 
-from kostal.plenticore import (
-    PlenticoreApiClient,
-    PlenticoreApiException,
-)
-
-from homeassistant.util.dt import utcnow
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
 from homeassistant.const import (
     CONF_HOST,
-    CONF_PASSWORD,
     CONF_NAME,
+    CONF_PASSWORD,
     EVENT_HOMEASSISTANT_STOP,
 )
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.device_registry import async_get_registry
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.util.dt import utcnow
 
 from .const import DOMAIN, SCOPE_PROCESS_DATA, SCOPE_SETTING
 

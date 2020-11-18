@@ -1,11 +1,12 @@
 """Test the Kostal Plenticore Solar Inverter config flow."""
+from asyncio.exceptions import TimeoutError as AsyncIOTimeoutError
+
+from kostal.plenticore import PlenticoreAuthenticationException
+
 from homeassistant import config_entries, setup
 from homeassistant.components.kostal_plenticore.const import DOMAIN
 
 from tests.async_mock import patch
-
-from kostal.plenticore import PlenticoreAuthenticationException
-from asyncio.exceptions import TimeoutError as AsyncIOTimeoutError
 
 
 async def test_form(hass):
