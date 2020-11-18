@@ -30,7 +30,19 @@ PLATFORMS = ["sensor"]
 
 
 class PlenticoreApi(DataUpdateCoordinator):
-    """Data Coordinator for fetching all state of the entities."""
+    """Data Coordinator for fetching all state of the entities.
+
+    Each entity registers on this coordinator as soon as it is registers in hass. The
+    registered entity must provide a scope, module id and data id which is used
+    to poll values batched by scope. The values are returned in the data property
+    in a nested dict structure ([scope][module id][data id]: value).
+
+    Each entity is checked if the current firmware knows about it before polling.
+    If not the entity state is changed to unavailable.
+
+    Entities with scope SCOPE_SETTING are slower much slower polled (5 minutes)
+    than SCOPE_PROCESS_DATA.
+    """
 
     def __init__(self, hass, config, logger: logging.Logger):
         """Create a new Plenticore Update Coordinator."""
