@@ -22,7 +22,7 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.device_registry import async_get_registry
 
 from .const import DOMAIN, SCOPE_PROCESS_DATA, SCOPE_SETTING
@@ -38,6 +38,7 @@ class PlenticoreApi(DataUpdateCoordinator):
     """Data Coordinator for fetching all state of the entities."""
 
     def __init__(self, hass, config, logger: logging.Logger):
+        """Create a new Plenticore Update Coordinator."""
         super().__init__(
             hass=hass,
             logger=logger,
@@ -72,7 +73,7 @@ class PlenticoreApi(DataUpdateCoordinator):
         self._last_setting_update = None
 
     async def logout(self):
-        """Logs the out."""
+        """Logs the current logged in user out from the API."""
         if self._login:
             self._login = False
             await self._client.logout()

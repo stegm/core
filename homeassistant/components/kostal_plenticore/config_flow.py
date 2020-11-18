@@ -26,7 +26,7 @@ DATA_SCHEMA = vol.Schema(
 
 @callback
 def configured_instances(hass):
-    """Return a set of confgiured Kostal Plenticore HOSTS"""
+    """Return a set of configured Kostal Plenticore HOSTS."""
     return set(entry[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN))
 
 
@@ -57,6 +57,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     def __init__(self):
+        """Initialize a new ConfigFlow instance."""
         self._errors = {}
 
     async def async_step_user(self, user_input=None):
@@ -80,9 +81,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._errors[CONF_NAME] = "cannot_connect"
                 except Exception:  # pylint: disable=broad-except
                     _LOGGER.exception("Unexpected exception")
-                    self._errors["base"] = "unknown"
-
-            self._errors[CONF_NAME] = "already_configured"
+                    self._errors[CONF_NAME] = "unknown"
+            else:
+                self._errors[CONF_NAME] = "already_configured"
 
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=self._errors

@@ -123,27 +123,42 @@ def format_em_manager_state(state):
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
+    """Add kostal plenticore Sensors."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = []
 
-    for mid, did, ssn, ssd, fmt in SENSOR_PROCESS_DATA:
+    for module_id, data_id, name, sensor_data, fmt in SENSOR_PROCESS_DATA:
         # get function for string
-        fm = globals()[str(fm)]
+        fmt = globals()[str(fmt)]
 
         entities.append(
             PlenticoreProcessDataSensor(
-                coordinator, entry.entry_id, entry.title, mid, did, ssn, ssd, fmt
+                coordinator,
+                entry.entry_id,
+                entry.title,
+                module_id,
+                data_id,
+                name,
+                sensor_data,
+                fmt,
             )
         )
 
-    for mid, did, ssn, ssd, fmt in SENSOR_SETTINGS_DATA:
+    for module_id, data_id, name, sensor_data, fmt in SENSOR_SETTINGS_DATA:
         # get function for string
-        fm = globals()[str(fm)]
+        fmt = globals()[str(fmt)]
 
         entities.append(
             PlenticoreSettingSensor(
-                coordinator, entry.entry_id, entry.title, mid, did, ssn, ssd, fmt
+                coordinator,
+                entry.entry_id,
+                entry.title,
+                module_id,
+                data_id,
+                name,
+                sensor_data,
+                fmt,
             )
         )
 
@@ -176,6 +191,7 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
         sensor_data: dict,
         formatter: callable,
     ):
+        """Creates a new Sensor Entity for Plenticore process data."""
         super().__init__(coordinator)
         self.entry_id = entry_id
         self.platform_name = platform_name
@@ -189,44 +205,53 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
         self._available = True
 
     async def async_added_to_hass(self):
+        """Registers this entity on the Update Coordinator."""
         self.coordinator.register_entity(self)
         await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self):
+        """Unregisters this entity from the Update Coordinator."""
         await super().async_will_remove_from_hass()
         self.coordinator.unregister_entity(self)
 
     @property
     def available(self):
+        """Returns if this entity is available (exist in the Plenticore Firmware Version)."""
         return self._available
 
     @available.setter
     def available(self, available):
-        """Sets the available state."""
+        """Sets the availability of this entity."""
         self._available = available
 
     @property
     def scope(self):
+        """Returns the scope (process data or setting) of this Sensor Entity."""
         return SCOPE_PROCESS_DATA
 
     @property
     def unique_id(self):
+        """Return the unique id of this Sensor Entity."""
         return f"{self.entry_id}_{self._sensor_name}"
 
     @property
     def name(self):
+        """Return the name of this Sensor Entity."""
         return f"{self.platform_name} {self._sensor_name}"
 
     @property
     def unit_of_measurement(self):
+        """Returns the unit of this Sensor Entity or None."""
         return self._sensor_data.get(ATTR_UNIT_OF_MEASUREMENT, None)
 
     @property
     def icon(self):
+        """Returns the icon name of this Sensor Entity or None."""
         return self._sensor_data.get(ATTR_ICON, None)
 
     @property
     def device_class(self):
+        """Returns the device class of this Sensor Entity or None."""
         return self._sensor_data.get(ATTR_DEVICE_CLASS, None)
 
     @property
@@ -254,8 +279,9 @@ class PlenticoreSettingSensor(PlenticoreProcessDataSensor):
 
     @property
     def scope(self):
+        """Returns the scope (process data or setting) of this Sensor Entity."""
         return SCOPE_SETTING
 
     async def set_new_value(self, value):
-        """Writes the given value to the setting of this entity instance."""
+        """Write the given value to the setting of this entity instance."""
         await self.coordinator.write_setting(self.module_id, self.data_id, str(value))

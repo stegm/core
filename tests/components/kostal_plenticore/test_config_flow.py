@@ -4,6 +4,9 @@ from homeassistant.components.kostal_plenticore.const import DOMAIN
 
 from tests.async_mock import patch
 
+from kostal.plenticore import PlenticoreAuthenticationException
+from asyncio.exceptions import TimeoutError as AsyncIOTimeoutError
+
 
 async def test_form(hass):
     """Test we get the form."""
@@ -15,8 +18,8 @@ async def test_form(hass):
     assert result["errors"] == {}
 
     with patch(
-        "homeassistant.components.kostal_plenticore.config_flow.PlaceholderHub.authenticate",
-        return_value=True,
+        "homeassistant.components.kostal_plenticore.config_flow.test_connection",
+        return_value=("scb", "123456789"),
     ), patch(
         "homeassistant.components.kostal_plenticore.async_setup", return_value=True
     ) as mock_setup, patch(
@@ -27,16 +30,15 @@ async def test_form(hass):
             result["flow_id"],
             {
                 "host": "1.1.1.1",
-                "username": "test-username",
                 "password": "test-password",
             },
         )
 
     assert result2["type"] == "create_entry"
-    assert result2["title"] == "Name of the device"
+    assert result2["title"] == "Plenticore"
     assert result2["data"] == {
+        "name": "Plenticore",
         "host": "1.1.1.1",
-        "username": "test-username",
         "password": "test-password",
     }
     await hass.async_block_till_done()
@@ -51,20 +53,19 @@ async def test_form_invalid_auth(hass):
     )
 
     with patch(
-        "homeassistant.components.kostal_plenticore.config_flow.PlaceholderHub.authenticate",
-        side_effect=InvalidAuth,
+        "homeassistant.components.kostal_plenticore.config_flow.test_connection",
+        side_effect=PlenticoreAuthenticationException(404, "invalid user"),
     ):
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {
                 "host": "1.1.1.1",
-                "username": "test-username",
                 "password": "test-password",
             },
         )
 
     assert result2["type"] == "form"
-    assert result2["errors"] == {"base": "invalid_auth"}
+    assert result2["errors"] == {"name": "invalid_auth"}
 
 
 async def test_form_cannot_connect(hass):
@@ -74,17 +75,16 @@ async def test_form_cannot_connect(hass):
     )
 
     with patch(
-        "homeassistant.components.kostal_plenticore.config_flow.PlaceholderHub.authenticate",
-        side_effect=CannotConnect,
+        "homeassistant.components.kostal_plenticore.config_flow.test_connection",
+        side_effect=AsyncIOTimeoutError(),
     ):
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {
                 "host": "1.1.1.1",
-                "username": "test-username",
                 "password": "test-password",
             },
         )
 
     assert result2["type"] == "form"
-    assert result2["errors"] == {"base": "cannot_connect"}
+    assert result2["errors"] == {"name": "cannot_connect"}
