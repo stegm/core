@@ -42,6 +42,13 @@ SENSOR_PROCESS_DATA = [
     ),
     (
         "devices:local",
+        "Dc_P",
+        "Solar Power",
+        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
+        "format_round",
+    ),
+    (
+        "devices:local",
         "Grid_P",
         "Grid Power",
         {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
