@@ -27,7 +27,9 @@ DATA_SCHEMA = vol.Schema(
 @callback
 def configured_instances(hass):
     """Return a set of configured Kostal Plenticore HOSTS."""
-    return set(entry[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN))
+    return set(
+        entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)
+    )
 
 
 async def test_connection(hass: core.HomeAssistant, data) -> str:
@@ -83,7 +85,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     _LOGGER.exception("Unexpected exception")
                     self._errors[CONF_BASE] = "unknown"
             else:
-                self._errors[CONF_BASE] = "already_configured"
+                return self.async_abort(reason="already_configured")
 
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=self._errors
