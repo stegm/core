@@ -22,6 +22,7 @@ SCOPE_SETTING = "setting"
 SERVICE_SET_VALUE = "write_setting_value"
 
 ATTR_VALUE = "value"
+ATTR_ENABLED_DEFAULT = "entity_registry_enabled_default"
 
 """Defines all entities for process data.
 
@@ -44,14 +45,22 @@ SENSOR_PROCESS_DATA = [
         "devices:local",
         "Dc_P",
         "Solar Power",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
+        {
+            ATTR_UNIT_OF_MEASUREMENT: POWER_WATT,
+            ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER,
+            ATTR_ENABLED_DEFAULT: True,
+        },
         "format_round",
     ),
     (
         "devices:local",
         "Grid_P",
         "Grid Power",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
+        {
+            ATTR_UNIT_OF_MEASUREMENT: POWER_WATT,
+            ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER,
+            ATTR_ENABLED_DEFAULT: True,
+        },
         "format_round",
     ),
     (
@@ -86,7 +95,11 @@ SENSOR_PROCESS_DATA = [
         "devices:local:ac",
         "P",
         "AC Power",
-        {ATTR_UNIT_OF_MEASUREMENT: POWER_WATT, ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER},
+        {
+            ATTR_UNIT_OF_MEASUREMENT: POWER_WATT,
+            ATTR_DEVICE_CLASS: DEVICE_CLASS_POWER,
+            ATTR_ENABLED_DEFAULT: True,
+        },
         "format_round",
     ),
     (
@@ -441,6 +454,7 @@ SENSOR_PROCESS_DATA = [
         {
             ATTR_UNIT_OF_MEASUREMENT: ENERGY_KILO_WATT_HOUR,
             ATTR_DEVICE_CLASS: DEVICE_CLASS_ENERGY,
+            ATTR_ENABLED_DEFAULT: True,
         },
         "format_energy",
     ),

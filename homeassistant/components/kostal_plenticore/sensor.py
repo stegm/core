@@ -2,6 +2,7 @@
 import logging
 
 import voluptuous as vol
+from typing import Optional
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -16,6 +17,7 @@ from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    ATTR_ENABLED_DEFAULT,
     ATTR_VALUE,
     DOMAIN,
     SCOPE_PROCESS_DATA,
@@ -248,9 +250,14 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
         return self._sensor_data.get(ATTR_ICON, None)
 
     @property
-    def device_class(self):
-        """Return the device class of this Sensor Entity or None."""
+    def device_class(self) -> Optional[str]:
+        """Return the class of this device, from component DEVICE_CLASSES."""
         return self._sensor_data.get(ATTR_DEVICE_CLASS, None)
+
+    @property
+    def entity_registry_enabled_default(self) -> bool:
+        """Return if the entity should be enabled when first added to the entity registry."""
+        return self._sensor_data.get(ATTR_ENABLED_DEFAULT, False)
 
     @property
     def state(self):
