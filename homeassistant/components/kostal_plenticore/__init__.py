@@ -28,6 +28,8 @@ CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
 PLATFORMS = ["sensor"]
 
+SCAN_INTERVAL = timedelta(seconds=10)
+
 
 class PlenticoreApi(DataUpdateCoordinator):
     """Data Coordinator for fetching all state of the entities.
@@ -50,7 +52,7 @@ class PlenticoreApi(DataUpdateCoordinator):
             hass=hass,
             logger=logger,
             name="Plenticore",
-            update_interval=timedelta(seconds=10),
+            update_interval=SCAN_INTERVAL,
             update_method=self._fetch_data,
         )
         self.hass = hass
@@ -80,19 +82,19 @@ class PlenticoreApi(DataUpdateCoordinator):
         self._last_setting_update = None
 
     async def logout(self):
-        """Logs the current logged in user out from the API."""
+        """Log the current logged in user out from the API."""
         if self._login:
             self._login = False
             await self._client.logout()
             _LOGGER.info("Logged out from %s.", self._config[CONF_HOST])
 
     def register_entity(self, entity):
-        """Registers a entity on this instance."""
+        """Register a entity on this instance."""
         self._registered_entities.append(entity)
         self._entities_updated = True
 
     def unregister_entity(self, entity):
-        """Registers a entity on this instance."""
+        """Register a entity on this instance."""
         self._registered_entities = [
             x for x in self._registered_entities if x.unique_id != entity.unique_id
         ]
@@ -100,7 +102,7 @@ class PlenticoreApi(DataUpdateCoordinator):
 
     @property
     def device_info(self):
-        """Returns the device info for all plenticore entities."""
+        """Return the device info for all plenticore entities."""
         return self._device_info
 
     async def _update_device_info(self):
@@ -178,7 +180,7 @@ class PlenticoreApi(DataUpdateCoordinator):
                 _LOGGER.info("Entity '%s' is not available on plenticore.", entity.name)
 
     async def _ensure_login(self):
-        """Ensures that the default user is logged in."""
+        """Ensure that the default user is logged in."""
         if not self._login:
             await self._client.login(self._config[CONF_PASSWORD])
             await self._udpate_existing_data()
@@ -220,7 +222,7 @@ class PlenticoreApi(DataUpdateCoordinator):
         return self._data
 
     async def write_setting(self, module_id: str, setting_id: str, value: str):
-        """Writes a new setting value to the inverter."""
+        """Write a new setting value to the inverter."""
 
         await self._ensure_login()
 

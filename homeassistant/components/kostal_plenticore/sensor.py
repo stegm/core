@@ -36,7 +36,7 @@ SERVICE_SET_VALUE_SCHEMA = vol.Schema(
 
 
 def format_round(state):
-    """Returns the given state value as rounded integer."""
+    """Return the given state value as rounded integer."""
     try:
         return round(float(state))
     except (TypeError, ValueError):
@@ -44,7 +44,7 @@ def format_round(state):
 
 
 def format_energy(state):
-    """Returns the given state value as energy value, scaled to kWh."""
+    """Return the given state value as energy value, scaled to kWh."""
     try:
         return round(float(state) / 1000, 1)
     except (TypeError, ValueError):
@@ -52,7 +52,7 @@ def format_energy(state):
 
 
 def format_inverter_state(state):
-    """Returns a readable string of the inverter state."""
+    """Return a readable string of the inverter state."""
     try:
         value = int(state)
     except (TypeError, ValueError):
@@ -96,7 +96,7 @@ def format_inverter_state(state):
 
 
 def format_em_manager_state(state):
-    """Returns a readable state of the energy manager."""
+    """Return a readable state of the energy manager."""
     try:
         value = int(state)
     except (TypeError, ValueError):
@@ -189,7 +189,7 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
         sensor_data: dict,
         formatter: callable,
     ):
-        """Creates a new Sensor Entity for Plenticore process data."""
+        """Create a new Sensor Entity for Plenticore process data."""
         super().__init__(coordinator)
         self.entry_id = entry_id
         self.platform_name = platform_name
@@ -203,28 +203,28 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
         self._available = True
 
     async def async_added_to_hass(self):
-        """Registers this entity on the Update Coordinator."""
+        """Register this entity on the Update Coordinator."""
         self.coordinator.register_entity(self)
         await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self):
-        """Unregisters this entity from the Update Coordinator."""
+        """Unregister this entity from the Update Coordinator."""
         await super().async_will_remove_from_hass()
         self.coordinator.unregister_entity(self)
 
     @property
     def available(self):
-        """Returns if this entity is available (exist in the Plenticore Firmware Version)."""
+        """Return if this entity can be access in the current Plenticore firmware version."""
         return self._available
 
     @available.setter
     def available(self, available):
-        """Sets the availability of this entity."""
+        """Set the availability of this entity."""
         self._available = available
 
     @property
     def scope(self):
-        """Returns the scope (process data or setting) of this Sensor Entity."""
+        """Return the scope of this Sensor Entity."""
         return SCOPE_PROCESS_DATA
 
     @property
@@ -239,17 +239,17 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
 
     @property
     def unit_of_measurement(self):
-        """Returns the unit of this Sensor Entity or None."""
+        """Return the unit of this Sensor Entity or None."""
         return self._sensor_data.get(ATTR_UNIT_OF_MEASUREMENT, None)
 
     @property
     def icon(self):
-        """Returns the icon name of this Sensor Entity or None."""
+        """Return the icon name of this Sensor Entity or None."""
         return self._sensor_data.get(ATTR_ICON, None)
 
     @property
     def device_class(self):
-        """Returns the device class of this Sensor Entity or None."""
+        """Return the device class of this Sensor Entity or None."""
         return self._sensor_data.get(ATTR_DEVICE_CLASS, None)
 
     @property
@@ -277,7 +277,7 @@ class PlenticoreSettingSensor(PlenticoreProcessDataSensor):
 
     @property
     def scope(self):
-        """Returns the scope (process data or setting) of this Sensor Entity."""
+        """Return the scope of this Sensor Entity."""
         return SCOPE_SETTING
 
     async def set_new_value(self, value):
