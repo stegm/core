@@ -1,8 +1,8 @@
 """Platform for Kostal Plenticore sensors."""
 import logging
+from typing import Any, Callable, Dict, Optional, Union
 
 import voluptuous as vol
-from typing import Optional
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -37,7 +37,7 @@ SERVICE_SET_VALUE_SCHEMA = vol.Schema(
 )
 
 
-def format_round(state):
+def format_round(state: str) -> Union[int, str]:
     """Return the given state value as rounded integer."""
     try:
         return round(float(state))
@@ -45,7 +45,7 @@ def format_round(state):
         return state
 
 
-def format_energy(state):
+def format_energy(state: str) -> Union[float, str]:
     """Return the given state value as energy value, scaled to kWh."""
     try:
         return round(float(state) / 1000, 1)
@@ -53,7 +53,7 @@ def format_energy(state):
         return state
 
 
-def format_inverter_state(state):
+def format_inverter_state(state: str) -> str:
     """Return a readable string of the inverter state."""
     try:
         value = int(state)
@@ -97,7 +97,7 @@ def format_inverter_state(state):
     return "Unknown"
 
 
-def format_em_manager_state(state):
+def format_em_manager_state(state: str) -> str:
     """Return a readable state of the energy manager."""
     try:
         value = int(state)
@@ -171,7 +171,7 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         SERVICE_SET_VALUE,
         SERVICE_SET_VALUE_SCHEMA,
-        "set_new_value",
+        "async_set_new_value",
     )
 
     return True
@@ -183,13 +183,13 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
     def __init__(
         self,
         coordinator,
-        entry_id,
+        entry_id: str,
         platform_name: str,
         module_id: str,
         data_id: str,
         sensor_name: str,
-        sensor_data: dict,
-        formatter: callable,
+        sensor_data: Dict[str, Any],
+        formatter: Callable[[str], Any],
     ):
         """Create a new Sensor Entity for Plenticore process data."""
         super().__init__(coordinator)
@@ -204,48 +204,48 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
 
         self._available = True
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
         """Register this entity on the Update Coordinator."""
         self.coordinator.register_entity(self)
         await super().async_added_to_hass()
 
-    async def async_will_remove_from_hass(self):
+    async def async_will_remove_from_hass(self) -> None:
         """Unregister this entity from the Update Coordinator."""
         await super().async_will_remove_from_hass()
         self.coordinator.unregister_entity(self)
 
     @property
-    def available(self):
+    def available(self) -> bool:
         """Return if this entity can be access in the current Plenticore firmware version."""
         return self._available
 
     @available.setter
-    def available(self, available):
+    def available(self, available) -> None:
         """Set the availability of this entity."""
         self._available = available
 
     @property
-    def scope(self):
+    def scope(self) -> str:
         """Return the scope of this Sensor Entity."""
         return SCOPE_PROCESS_DATA
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return the unique id of this Sensor Entity."""
         return f"{self.entry_id}_{self._sensor_name}"
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return the name of this Sensor Entity."""
         return f"{self.platform_name} {self._sensor_name}"
 
     @property
-    def unit_of_measurement(self):
+    def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of this Sensor Entity or None."""
         return self._sensor_data.get(ATTR_UNIT_OF_MEASUREMENT, None)
 
     @property
-    def icon(self):
+    def icon(self) -> Optional[str]:
         """Return the icon name of this Sensor Entity or None."""
         return self._sensor_data.get(ATTR_ICON, None)
 
@@ -260,7 +260,7 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
         return self._sensor_data.get(ATTR_ENABLED_DEFAULT, False)
 
     @property
-    def state(self):
+    def state(self) -> Optional[Any]:
         """Return the state of the sensor."""
         if self.coordinator.data is None:
             # None is translated to STATE_UNKNOWN
@@ -274,7 +274,7 @@ class PlenticoreProcessDataSensor(CoordinatorEntity):
         return self._formatter(raw_value) if self._formatter else raw_value
 
     @property
-    def device_info(self):
+    def device_info(self) -> Optional[Dict[str, Any]]:
         """Device info."""
         return self.coordinator.device_info
 
@@ -283,10 +283,12 @@ class PlenticoreSettingSensor(PlenticoreProcessDataSensor):
     """Representation of a Plenticore setting value Sensor."""
 
     @property
-    def scope(self):
+    def scope(self) -> str:
         """Return the scope of this Sensor Entity."""
         return SCOPE_SETTING
 
-    async def set_new_value(self, value):
+    async def async_set_new_value(self, value) -> None:
         """Write the given value to the setting of this entity instance."""
-        await self.coordinator.write_setting(self.module_id, self.data_id, str(value))
+        await self.coordinator.async_write_setting(
+            self.module_id, self.data_id, str(value)
+        )

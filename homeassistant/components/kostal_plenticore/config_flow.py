@@ -6,9 +6,9 @@ from aiohttp.client_exceptions import ClientError
 from kostal.plenticore import PlenticoreApiClient, PlenticoreAuthenticationException
 import voluptuous as vol
 
-from homeassistant import config_entries, core
+from homeassistant import config_entries
 from homeassistant.const import CONF_BASE, CONF_HOST, CONF_NAME, CONF_PASSWORD
-from homeassistant.core import callback
+from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
@@ -32,7 +32,7 @@ def configured_instances(hass):
     )
 
 
-async def test_connection(hass: core.HomeAssistant, data) -> str:
+async def test_connection(hass: HomeAssistant, data) -> str:
     """Test the connection to the inverter.
 
     Data has the keys from DATA_SCHEMA with values provided by the user.

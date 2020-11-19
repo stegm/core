@@ -3,6 +3,7 @@ import asyncio
 from collections import defaultdict
 from datetime import timedelta
 import logging
+from typing import Any, Dict, Iterable
 
 from kostal.plenticore import PlenticoreApiClient, PlenticoreApiException
 import voluptuous as vol
@@ -21,6 +22,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util.dt import utcnow
 
 from .const import DOMAIN, SCOPE_PROCESS_DATA, SCOPE_SETTING
+from .sensor import PlenticoreProcessDataSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,7 +48,9 @@ class PlenticoreApi(DataUpdateCoordinator):
     than SCOPE_PROCESS_DATA.
     """
 
-    def __init__(self, hass, config, logger: logging.Logger):
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, logger: logging.Logger
+    ):
         """Create a new Plenticore Update Coordinator."""
         super().__init__(
             hass=hass,
@@ -81,19 +85,19 @@ class PlenticoreApi(DataUpdateCoordinator):
         # last update timestamp of setting values
         self._last_setting_update = None
 
-    async def logout(self):
+    async def logout(self) -> None:
         """Log the current logged in user out from the API."""
         if self._login:
             self._login = False
             await self._client.logout()
             _LOGGER.info("Logged out from %s.", self._config[CONF_HOST])
 
-    def register_entity(self, entity):
+    def register_entity(self, entity: PlenticoreProcessDataSensor) -> None:
         """Register a entity on this instance."""
         self._registered_entities.append(entity)
         self._entities_updated = True
 
-    def unregister_entity(self, entity):
+    def unregister_entity(self, entity: PlenticoreProcessDataSensor) -> None:
         """Register a entity on this instance."""
         self._registered_entities = [
             x for x in self._registered_entities if x.unique_id != entity.unique_id
@@ -101,11 +105,11 @@ class PlenticoreApi(DataUpdateCoordinator):
         self._entities_updated = True
 
     @property
-    def device_info(self):
+    def device_info(self) -> Dict[str, Any]:
         """Return the device info for all plenticore entities."""
         return self._device_info
 
-    async def _update_device_info(self):
+    async def _update_device_info(self) -> None:
         device_settings = await self._client.get_setting_values(
             module_id="devices:local",
             setting_id=[
@@ -142,7 +146,7 @@ class PlenticoreApi(DataUpdateCoordinator):
                 device.id, model=model, sw_version=sw_version
             )
 
-    async def _udpate_existing_data(self):
+    async def _udpate_existing_data(self) -> None:
         data = await self._client.get_settings()
         self._existing_data_ids[SCOPE_SETTING] = {
             m: set((y.id for y in x)) for m, x in data.items()
@@ -155,7 +159,7 @@ class PlenticoreApi(DataUpdateCoordinator):
 
         self._entities_updated = True
 
-    def _build_request(self, scope: str):
+    def _build_request(self, scope: str) -> Dict[str, Iterable[str]]:
         request = defaultdict(list)
 
         for entity in self._available_entities:
@@ -164,7 +168,7 @@ class PlenticoreApi(DataUpdateCoordinator):
 
         return request
 
-    def _build_available_entities(self):
+    def _build_available_entities(self) -> None:
         self._available_entities = []
         for entity in self._registered_entities:
             if (
@@ -179,7 +183,7 @@ class PlenticoreApi(DataUpdateCoordinator):
                 entity.available = False
                 _LOGGER.info("Entity '%s' is not available on plenticore.", entity.name)
 
-    async def _ensure_login(self):
+    async def _ensure_login(self) -> None:
         """Ensure that the default user is logged in."""
         if not self._login:
             await self._client.login(self._config[CONF_PASSWORD])
@@ -188,7 +192,7 @@ class PlenticoreApi(DataUpdateCoordinator):
             _LOGGER.info("Log-in successfully at %s.", self._config[CONF_HOST])
             self._login = True
 
-    async def _fetch_data(self):
+    async def _fetch_data(self) -> Dict[str, Dict[str, str]]:
         """Fetch process data and setting values from the inverter."""
         if len(self._registered_entities) == 0:
             return {}
@@ -221,7 +225,9 @@ class PlenticoreApi(DataUpdateCoordinator):
 
         return self._data
 
-    async def write_setting(self, module_id: str, setting_id: str, value: str):
+    async def async_write_setting(
+        self, module_id: str, setting_id: str, value: str
+    ) -> None:
         """Write a new setting value to the inverter."""
 
         await self._ensure_login()
@@ -234,13 +240,13 @@ class PlenticoreApi(DataUpdateCoordinator):
         self.async_set_updated_data(self._data)
 
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Kostal Plenticore Solar Inverter component."""
     hass.data.setdefault(DOMAIN, {})
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Kostal Plenticore Solar Inverter from a config entry."""
     api = PlenticoreApi(hass, entry.data, _LOGGER)
 
@@ -260,7 +266,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = all(
         await asyncio.gather(
